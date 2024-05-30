@@ -1,110 +1,120 @@
-import streamlit as st
 import pandas as pd
-import plotly.express as px
-from statistics import mode, median
-from streamlit_extras.metric_cards import style_metric_cards
-from streamlit_elements import elements
-st.set_page_config(layout="wide")
- 
+import streamlit as st
+import matplotlib.pyplot as plt
+from statsmodels.tsa.arima.model import ARIMA
 
-#pip install streamlit-elements==0.1.*
-#https://github.com/okld/streamlit-elements
+# Cargar el conjunto de datos
+file_path_llamadas = 'df_llamadas_model.csv'  # Cambia esto a la ruta correcta de tu archivo
+df_llamadas = pd.read_csv(file_path_llamadas)
 
-#pip install streamlit-pills
-#https://github.com/jrieke/streamlit-pills
+file_path_minutos = 'df_minutos_model.csv'  # Cambia esto a la ruta correcta de tu archivo
+df_minutos = pd.read_csv(file_path_minutos)
 
-#pip install streamlit-extras
-#https://github.com/arnaudmiribel/streamlit-extras
+# Convertir la columna 'FECHA' al formato datetime
+df_llamadas['FECHA'] = pd.to_datetime(df_llamadas['FECHA'])
+df_minutos['FECHA'] = pd.to_datetime(df_minutos['FECHA'])
 
+# Establecer la columna 'FECHA' como índice
+df_llamadas.set_index('FECHA', inplace=True)
+df_minutos.set_index('FECHA', inplace=True)
 
-#all graphs we use custom css not streamlit 
-theme_plotly = None 
+# Preparar los datos para cada serie
+ict_series = df_llamadas['TOTAL_LLAMADAS_ICT']
+aa_series = df_llamadas['TOTAL_LLAMADAS_AA']
+tol_series = df_llamadas['TOTAL_LLAMADAS_TOL_DWT']
 
-with st.sidebar:
-       st.header("DASHBOARD")
-# Custom CSS for sidebar
-st.markdown(
-    """
-    <style>
-    [data-testid="stSidebar"] {
-        background-color: #103F7A;
-    }
-    [data-testid="stSidebar"] * {
-        color: white;
-    }
+ict_series_min = df_minutos['TOTAL_MINUTOS_ICT']
+aa_series_min = df_minutos['TOTAL_MINUTOS_AA']
+tol_series_min = df_minutos['TOTAL_MINUTOS_TOL_DWT']
 
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-st.title('DATA SCIENCE')
-df = pd.read_csv('dataset.csv')
+# Dividir los datos en conjuntos de entrenamiento y prueba
+train_ict = ict_series[:-7]
+train_aa = aa_series[:-7]
+train_tol = tol_series[:-7]
 
+train_ict_min = ict_series_min[:-7]
+train_aa_min = aa_series_min[:-7]
+train_tol_min = tol_series_min[:-7]
 
-married=st.sidebar.multiselect(
-    "married",
-     options=df["married"].unique(),
-     default=df["married"].unique(),
-)
-education_level=st.sidebar.multiselect(
-    "education_level",
-     options=df["education_level"].unique(),
-     default=df["education_level"].unique(),
-)
-employment=st.sidebar.multiselect(
-    "employment",
-     options=df["employment"].unique(),
-     default=df["employment"].unique(),
-)
+# Ajustar el modelo ARIMA para cada serie
+model_ict = ARIMA(train_ict, order=(5,1,0)).fit()
+model_aa = ARIMA(train_aa, order=(5,1,0)).fit()
+model_tol = ARIMA(train_tol, order=(5,1,0)).fit()
 
-df_selection=df.query(
-    "married==@married & education_level==@education_level & employment ==@employment"
-)
+model_ict_min = ARIMA(train_ict_min, order=(5,1,0)).fit()
+model_aa_min = ARIMA(train_aa_min, order=(5,1,0)).fit()
+model_tol_min = ARIMA(train_tol_min, order=(5,1,0)).fit()
 
+# Predecir los próximos 7 días
+forecast_ict = model_ict.forecast(steps=7).round(0).astype(int)
+forecast_aa = model_aa.forecast(steps=7).round(0).astype(int)
+forecast_tol = model_tol.forecast(steps=7).round(0).astype(int)
 
-with st.expander("VIEW EXCEL DATASET"):
-        showData=st.multiselect('Filter: ',df_selection.columns,default=[])
-        st.dataframe(df_selection[showData],use_container_width=True)
+forecast_ict_min = model_ict_min.forecast(steps=7).round(0).astype(int)
+forecast_aa_min = model_aa_min.forecast(steps=7).round(0).astype(int)
+forecast_tol_min = model_tol_min.forecast(steps=7).round(0).astype(int)
 
-try: 
- max_age = df_selection['age'].max()
- min_age = df_selection['age'].min()
- mode_age = mode(df_selection['age'])
- median_age = median(df_selection['age'])
-except:
-     st.error("Error")
-try:
- a1,a2,a3,a4=st.columns(4)
- a1.metric(label="Min Age", value=min_age)
- a2.metric(label="Max Age", value=max_age)
- a3.metric(label="Mode Age", value=mode_age)
- a4.metric(label="Median Age", value=median_age)     
- style_metric_cards(border_left_color="#103F7A",box_shadow=True,border_color="gray")
-except:
-     st.error("Error")
+# Preparar un dataframe para mostrar los resultados de las predicciones
+forecast_dates = pd.date_range(start=df_llamadas.index[-1] + pd.Timedelta(days=1), periods=7)
+forecast_df = pd.DataFrame({
+    'FECHA': forecast_dates,
+    'FORECAST_LLAMADAS_ICT': forecast_ict,
+    'FORECAST_LLAMADAS_AA': forecast_aa,
+    'FORECAST_LLAMADAS_TOL_DWT': forecast_tol
+})
 
-b1,b2=st.columns([1, 1]) 
+forecast_df_min = pd.DataFrame({
+    'FECHA': forecast_dates,
+    'FORECAST_MINUTOS_ICT': forecast_ict_min,
+    'FORECAST_MINUTOS_AA': forecast_aa_min,
+    'FORECAST_MINUTOS_TOL_DWT': forecast_tol_min
+})
 
-b1.subheader('SIMPLE BAR GRAPH')
-age_counts = df_selection['age'].value_counts().sort_index()
-fig = px.bar(age_counts, x=age_counts.index, y=age_counts.values, labels={'x': 'Age', 'y': 'Frequency'}, title='Age by Frequency')
-b1.plotly_chart(fig,use_container_width=True)
- 
+# Configurar la página de Streamlit
+st.title('Dashboard de Predicciones de Llamadas y Minutos')
+st.write('### Predicciones para los próximos 7 días')
 
+# Mostrar los dataframes
+st.write('#### Predicciones de Llamadas')
+st.dataframe(forecast_df)
 
+st.write('#### Predicciones de Minutos')
+st.dataframe(forecast_df_min)
 
-try:
- b2.subheader('BOX PLOT')
- fig_box = px.box(df_selection, y='age', title='Age Distribution')
- b2.plotly_chart(fig_box)
-except:
-     st.error("Error")
+# Graficar los valores históricos y las predicciones
+st.write('### Gráficas de Predicciones')
 
+fig, axs = plt.subplots(3, 2, figsize=(14, 14))
 
- 
- 
- 
+axs[0, 0].plot(ict_series, label='Histórico')
+axs[0, 0].plot(forecast_dates, forecast_ict, label='Predicción')
+axs[0, 0].set_title('Llamadas ICT')
+axs[0, 0].legend()
 
- 
+axs[1, 0].plot(aa_series, label='Histórico')
+axs[1, 0].plot(forecast_dates, forecast_aa, label='Predicción')
+axs[1, 0].set_title('Llamadas AA')
+axs[1, 0].legend()
 
-    
+axs[2, 0].plot(tol_series, label='Histórico')
+axs[2, 0].plot(forecast_dates, forecast_tol, label='Predicción')
+axs[2, 0].set_title('Llamadas TOL')
+axs[2, 0].legend()
+
+axs[0, 1].plot(ict_series_min, label='Histórico')
+axs[0, 1].plot(forecast_dates, forecast_ict_min, label='Predicción')
+axs[0, 1].set_title('Minutos ICT')
+axs[0, 1].legend()
+
+axs[1, 1].plot(aa_series_min, label='Histórico')
+axs[1, 1].plot(forecast_dates, forecast_aa_min, label='Predicción')
+axs[1, 1].set_title('Minutos AA')
+axs[1, 1].legend()
+
+axs[2, 1].plot(tol_series_min, label='Histórico')
+axs[2, 1].plot(forecast_dates, forecast_tol_min, label='Predicción')
+axs[2, 1].set_title('Minutos TOL')
+axs[2, 1].legend()
+
+plt.tight_layout()
+st.pyplot(fig)
