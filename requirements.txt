@@ -34,3 +34,7 @@ numerize==0.12
 numpy==1.23.5
 oauthlib==3.2.2
 openpyxl==3.1.2
+statsmodels==0.14.2
+matplotlib==3.7.1
+
+
