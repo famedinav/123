@@ -10,8 +10,8 @@ def init_connection():
     return client
 
 client = init_connection()
-db = client["interconexion"]  # Reemplaza con el nombre de tu base de datos
-collection = db["df_grouped_tol_minutos"]  # Reemplaza con el nombre de tu colección
+db = client["sample_airbnb"]  # Reemplaza con el nombre de tu base de datos
+collection = db["listingsAndReviews"]  # Reemplaza con el nombre de tu colección
 
 # Obtener datos de MongoDB
 @st.cache_data(ttl=600)
@@ -33,4 +33,4 @@ st.write(df)
 # Ejemplo de gráfico
 if not df.empty:
     st.write("### Gráfico de ejemplo")
-    st.bar_chart(df["campo_de_interés"])  # Reemplaza "campo_de_interés" por un campo numérico de tu colección
+    st.bar_chart(df["neighborhood_overview"])  # Reemplaza "campo_de_interés" por un campo numérico de tu colección
