@@ -10,13 +10,14 @@ load_dotenv()
 # Conexión a MongoDB Atlas
 @st.cache_resource
 def init_connection():
-    uri = os.getenv("MONGODB_URI")
+    uri = "MONGODB_URI=mongodb+srv://jmorenoh4:H80i147g*28-@cluster0.ybqahf8.mongodb.net/"  # Reemplaza esto con tu URI de conexión de MongoDB Atlas
     client = MongoClient(uri)
     return client
 
 client = init_connection()
-db = client["nombre_de_tu_base_de_datos"]
-collection = db["nombre_de_tu_colección"]
+db = client["interconexion"]  # Reemplaza con el nombre de tu base de datos
+collection = db["df_grouped_tol_minutos"]  # Reemplaza con el nombre de tu colección
+
 
 # Obtener datos de MongoDB
 @st.cache_data(ttl=600)
