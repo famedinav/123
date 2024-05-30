@@ -1,36 +1,110 @@
 import streamlit as st
-from pymongo import MongoClient
 import pandas as pd
+import plotly.express as px
+from statistics import mode, median
+from streamlit_extras.metric_cards import style_metric_cards
+from streamlit_elements import elements
+st.set_page_config(layout="wide")
+ 
 
-# Conexión a MongoDB Atlas
-@st.cache_resource
-def init_connection():
-    uri = "MONGODB_URI=mongodb+srv://jmorenoh4:H80i147g*28-@cluster0.ybqahf8.mongodb.net/"  # Reemplaza esto con tu URI de conexión de MongoDB Atlas
-    client = MongoClient(uri)
-    return client
+#pip install streamlit-elements==0.1.*
+#https://github.com/okld/streamlit-elements
 
-client = init_connection()
-db = client["sample_airbnb"]  # Reemplaza con el nombre de tu base de datos
-collection = db["listingsAndReviews"]  # Reemplaza con el nombre de tu colección
+#pip install streamlit-pills
+#https://github.com/jrieke/streamlit-pills
 
-# Obtener datos de MongoDB
-@st.cache_data(ttl=600)
-def get_data():
-    data = list(collection.find())
-    return data
+#pip install streamlit-extras
+#https://github.com/arnaudmiribel/streamlit-extras
 
-data = get_data()
 
-# Convertir datos a DataFrame de Pandas
-df = pd.DataFrame(data)
+#all graphs we use custom css not streamlit 
+theme_plotly = None 
 
-# Visualización con Streamlit
-st.title("Dashboard con Streamlit y MongoDB Atlas")
+with st.sidebar:
+       st.header("DASHBOARD")
+# Custom CSS for sidebar
+st.markdown(
+    """
+    <style>
+    [data-testid="stSidebar"] {
+        background-color: #103F7A;
+    }
+    [data-testid="stSidebar"] * {
+        color: white;
+    }
 
-st.write("### Datos de la base de datos")
-st.write(df)
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+st.title('DATA SCIENCE')
+df = pd.read_csv('dataset.csv')
 
-# Ejemplo de gráfico
-if not df.empty:
-    st.write("### Gráfico de ejemplo")
-    st.bar_chart(df["neighborhood_overview"])  # Reemplaza "campo_de_interés" por un campo numérico de tu colección
+
+married=st.sidebar.multiselect(
+    "married",
+     options=df["married"].unique(),
+     default=df["married"].unique(),
+)
+education_level=st.sidebar.multiselect(
+    "education_level",
+     options=df["education_level"].unique(),
+     default=df["education_level"].unique(),
+)
+employment=st.sidebar.multiselect(
+    "employment",
+     options=df["employment"].unique(),
+     default=df["employment"].unique(),
+)
+
+df_selection=df.query(
+    "married==@married & education_level==@education_level & employment ==@employment"
+)
+
+
+with st.expander("VIEW EXCEL DATASET"):
+        showData=st.multiselect('Filter: ',df_selection.columns,default=[])
+        st.dataframe(df_selection[showData],use_container_width=True)
+
+try: 
+ max_age = df_selection['age'].max()
+ min_age = df_selection['age'].min()
+ mode_age = mode(df_selection['age'])
+ median_age = median(df_selection['age'])
+except:
+     st.error("Error")
+try:
+ a1,a2,a3,a4=st.columns(4)
+ a1.metric(label="Min Age", value=min_age)
+ a2.metric(label="Max Age", value=max_age)
+ a3.metric(label="Mode Age", value=mode_age)
+ a4.metric(label="Median Age", value=median_age)     
+ style_metric_cards(border_left_color="#103F7A",box_shadow=True,border_color="gray")
+except:
+     st.error("Error")
+
+b1,b2=st.columns([1, 1]) 
+
+b1.subheader('SIMPLE BAR GRAPH')
+age_counts = df_selection['age'].value_counts().sort_index()
+fig = px.bar(age_counts, x=age_counts.index, y=age_counts.values, labels={'x': 'Age', 'y': 'Frequency'}, title='Age by Frequency')
+b1.plotly_chart(fig,use_container_width=True)
+ 
+
+
+
+try:
+ b2.subheader('BOX PLOT')
+ fig_box = px.box(df_selection, y='age', title='Age Distribution')
+ b2.plotly_chart(fig_box)
+except:
+     st.error("Error")
+
+
+ 
+ 
+ 
+
+ 
+
+    
